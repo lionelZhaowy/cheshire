@@ -15,7 +15,7 @@ root=$(cd "$here/../.." && pwd)
 export AXI_DIR COMMON_CELLS_DIR REGISTER_INTERFACE_DIR UNBENT_DIR VGA_DIR RUN_DIR FETCHER_SOURCE
 export VGA_TEST_ROOT="$root"
 export VGA_ERROR_DEPTH="${VGA_ERROR_DEPTH:-16}"
-mkdir "$RUN_DIR"
+mkdir "$RUN_DIR" || exit 1
 python3 - <<'PY'
 from pathlib import Path
 import os,yaml,json,hashlib
