@@ -43,7 +43,7 @@ No F/R dependency or official lock file is changed.
 | unbent | e9c9d5cfb635f2d4668c816ce9235798cfecb297 |
 
 Both variants use the same corrected accepted-LAST fetcher from the companion
-[`axi_vga` contribution at `87ed00f2a90be97ca43db40719b9c362e37edcfa`](https://github.com/lionelZhaowy/axi_vga/tree/87ed00f2a90be97ca43db40719b9c362e37edcfa). This prerequisite is explicit: the old fetcher has an
+[`axi_vga` contribution at `6606db34cc29f395249b7559d544d15a056434bc`](https://github.com/lionelZhaowy/axi_vga/tree/6606db34cc29f395249b7559d544d15a056434bc). This prerequisite is explicit: the old fetcher has an
 independent request-completion defect. Use the exact public companion source,
 not an unrelated local patch stack. All other VGA RTL stays at the locked commit.
 
