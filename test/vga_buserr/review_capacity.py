@@ -33,11 +33,11 @@ class Audit:
 def rows_from_text(text,a):
     rows=[]
     for line,raw in enumerate(text.splitlines(),1):
-        m=re.match(r'^\[(E_VGA_[A-Z_]+)\]\s+(.*)$',raw)
+        m=re.match(r'^\[(VGA_TEST_[A-Z_]+)\]\s+(.*)$',raw)
         if m:
             row=dict(re.findall(r'(\w+)=([^\s]+)',m[2]));row.update(_kind=m[1],_line=line);rows.append(row)
-        if '[E_VGA_ERROR]' in raw:a.bad('TB_known_error',line=line,raw=raw)
-        if '[E_VGA_CONTROL_ERROR]' in raw:a.lack('TB_control_error',line=line,raw=raw)
+        if '[VGA_TEST_ERROR]' in raw:a.bad('TB_known_error',line=line,raw=raw)
+        if '[VGA_TEST_CONTROL_ERROR]' in raw:a.lack('TB_control_error',line=line,raw=raw)
         if ('Bus Error Unit exceeded number of outstanding transactions' in raw or
             re.search(r'Error-\[|Fatal-\[|Assertion.*(?:fail|error)|started at .*failed at',raw,re.I)):
             a.bad('native_outstanding_or_assertion_error',line=line,raw=raw)
@@ -63,7 +63,7 @@ def require_one(name,items,a):
 
 def review_text(text):
     a=Audit();rows=rows_from_text(text,a)
-    meta=[r for r in rows if r['_kind']=='E_VGA_CAP_META']
+    meta=[r for r in rows if r['_kind']=='VGA_TEST_CAP_META']
     require_one('unique_capacity_metadata',meta,a)
     if meta:
         for k,want in dict(version=8,case=909,epoch=13,outstanding=16,stored_errors=4,drop_oldest=0,width=48,id_width=2,user_error_bits=0).items():
@@ -71,10 +71,10 @@ def review_text(text):
         a.equal('fixed_frame_base',number(meta[0],'base',a,16),BASE)
     groups=defaultdict(lambda:defaultdict(list));legacy=defaultdict(list)
     for row in rows:
-        if row['_kind'] in ('E_VGA_CAP_STATE','E_VGA_CAP_POST','E_VGA_CAP_MMIO'):
+        if row['_kind'] in ('VGA_TEST_CAP_STATE','VGA_TEST_CAP_POST','VGA_TEST_CAP_MMIO'):
             cycle=number(row,'cycle',a)
             if cycle is not None:groups[cycle][row['_kind']].append(row)
-        elif row['_kind']=='E_VGA_AXI' and row.get('side')=='external':
+        elif row['_kind']=='VGA_TEST_AXI' and row.get('side')=='external':
             if number(row,'valid',a,2)==1 and number(row,'ready',a,2)==1:
                 cycle=number(row,'cycle',a)
                 if cycle is not None:legacy[(cycle,row.get('channel'))].append(row)
@@ -83,10 +83,10 @@ def review_text(text):
     accepted=[];buserr=[];mmio_sequences={6:[],7:[]};full_run=full_longest=0
     used_legacy=set()
     for cycle,g in sorted(groups.items()):
-        if len(g['E_VGA_CAP_STATE'])!=1 or len(g['E_VGA_CAP_POST'])!=1:
+        if len(g['VGA_TEST_CAP_STATE'])!=1 or len(g['VGA_TEST_CAP_POST'])!=1:
             a.lack('one_complete_pre_post_sample',cycle=cycle);trust=False;error_trust=False;continue
-        state=g['E_VGA_CAP_STATE'][0];post=g['E_VGA_CAP_POST'][0]
-        for row in (state,post)+tuple(g['E_VGA_CAP_MMIO']):
+        state=g['VGA_TEST_CAP_STATE'][0];post=g['VGA_TEST_CAP_POST'][0]
+        for row in (state,post)+tuple(g['VGA_TEST_CAP_MMIO']):
             a.equal('case_identity',number(row,'case',a),909,line=row['_line'])
             a.equal('epoch_identity',number(row,'epoch',a),13,line=row['_line'])
         time=number(state,'time_ps',a);phase=number(state,'phase',a)
@@ -151,7 +151,7 @@ def review_text(text):
             if len(queue)>16:a.bad('external_outstanding_above_16',actual=len(queue),cycle=cycle)
             if qbefore==16 and ar_accept:a.bad('AR_accepted_at_external_full_16',cycle=cycle)
             seen.add(len(queue))
-        for row in g['E_VGA_CAP_MMIO']:
+        for row in g['VGA_TEST_CAP_MMIO']:
             write=number(row,'write',a,2);address=number(row,'addr',a,16);data=number(row,'rdata',a,16)
             a.equal('BusErr_reg_response_error',number(row,'error',a,2),0,cycle=cycle)
             a.equal('BusErr_reg_full_strobe',number(row,'wstrb',a,16),15,cycle=cycle)
@@ -192,7 +192,7 @@ def review_text(text):
         if mmio_sequences[phase]!=pattern:a.lack('complete_error_head_peek_writeignore_pop',phase=phase,actual=mmio_sequences[phase],expected=pattern)
     unused=set(legacy)-used_legacy
     if unused:a.lack('accepted_AXI_record_without_public_clock_witness',keys=sorted(unused))
-    dones=[r for r in rows if r['_kind']=='E_VGA_CAP_DONE'];require_one('unique_capacity_DONE',dones,a)
+    dones=[r for r in rows if r['_kind']=='VGA_TEST_CAP_DONE'];require_one('unique_capacity_DONE',dones,a)
     if dones:
         done=dones[0]
         for k,want in dict(case=909,epoch=13,phase=8,pending=0,simultaneous=1,errors=0).items():a.equal('DONE_'+k,number(done,k,a),want)
@@ -205,12 +205,12 @@ def review_text(text):
         if error_trust:a.equal('final_BusErr_error_queue_empty',len(errors),0)
         else:a.lack('final_BusErr_head_attribution_unknown')
     else:a.lack('final_public_attribution_incomplete')
-    summaries=[r for r in rows if r['_kind']=='E_VGA_DONE' and r.get('kind')=='unit' and r.get('profile')=='capacity']
+    summaries=[r for r in rows if r['_kind']=='VGA_TEST_DONE' and r.get('kind')=='unit' and r.get('profile')=='capacity']
     require_one('unique_original_format_unit_DONE',summaries,a)
     if summaries:
         for k,want in dict(cases=1,errors=0,formal_rgb=0,formal_black=0).items():a.equal('unit_DONE_'+k,number(summaries[0],k,a),want)
-    require_one('unique_original_format_unit_PASS',re.findall(r'^E_VGA_UNIT_PASS profile=capacity$',text,re.M),a)
-    a.details.update(scope='capacity only; original timing/flow/restart remain on frozen reader5',
+    require_one('unique_original_format_unit_PASS',re.findall(r'^VGA_TEST_UNIT_PASS profile=capacity$',text,re.M),a)
+    a.details.update(scope='capacity only; timing/flow/restart use the companion display checker',
                      external_watermarks=sorted(seen),full_16_stop_AR_clocks=full_longest,
                      counts=dict(counts),accepted_AR_R=accepted,accepted_error_heads=buserr,
                      error_register_sequences={str(k):v for k,v in mmio_sequences.items()},

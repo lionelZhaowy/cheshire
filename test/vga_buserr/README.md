@@ -32,7 +32,7 @@ one, checks simultaneous AR/R at fifteen, and reaches sixteen again.
 ## Fixed official inputs
 
 All dependencies below come from the official Cheshire base's Bender.lock.
-No F/R dependency or official lock file is changed.
+The official dependency revisions remain unchanged.
 
 | Package | Commit |
 |---|---|
@@ -43,7 +43,7 @@ No F/R dependency or official lock file is changed.
 | unbent | e9c9d5cfb635f2d4668c816ce9235798cfecb297 |
 
 Both variants use the same corrected accepted-LAST fetcher from the companion
-[`axi_vga` contribution at `6606db34cc29f395249b7559d544d15a056434bc`](https://github.com/lionelZhaowy/axi_vga/tree/6606db34cc29f395249b7559d544d15a056434bc). This prerequisite is explicit: the old fetcher has an
+[`axi_vga` contribution at `d5f725f2fbebfd9ede7f1c977a627520a86f7395`](https://github.com/lionelZhaowy/axi_vga/tree/d5f725f2fbebfd9ede7f1c977a627520a86f7395). This prerequisite is explicit: the old fetcher has an
 independent request-completion defect. Use the exact public companion source,
 not an unrelated local patch stack. All other VGA RTL stays at the locked commit.
 
@@ -77,7 +77,7 @@ done
 
 The eight-entry capacity command is expected to fail. Both use identical test
 bytes and stimulus. Only `VGA_ERROR_DEPTH` changes the real `axi_err_unit_wrap`
-instance parameter. `E_VGA_INSTANCE` prints that actual parameter, the actual
+instance parameter. `VGA_TEST_INSTANCE` prints that actual parameter, the actual
 VGA buffer depth and the splitter limit. Each build records all source/header
 SHA values. Each simulation has a 2 ms HDL and 600-second wall limit.
 
@@ -110,13 +110,13 @@ The flow baseline's native warning is a failure even though pixels match.
 The three original display profiles keep their independent pixel, sync,
 transaction, reset and drain checks. They cover explicit disable/drain and reset
 with requests in flight. Deliberate underflow recovery uses a common reset.
-No EEPROM model or complete private SoC is required.
+
 
 ## Actual implementation checks
 
 The full real typed `axi_err_unit_wrap` was checked at Depth8 and Depth16 with
 DC W-2024.09-SP1. The included `vga_capacity_impl.sv` fixes the same public types.
-Use `check_structure.tcl` with `OUT`, `INPUTS`, `VARIANT`, `MODULE=vga`,
+Use `check_structure.tcl` with `OUT`, `VARIANT`, `MODULE=vga`,
 `TOP=vga_capacity_impl` and `DEPTH=8` or `16`. The output directory contains
 `sources.list` and `includes.list`. Its source list is:
 

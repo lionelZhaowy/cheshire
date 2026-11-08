@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Test-only finite extension of the public interface arrangement in
 // pulp-platform/axi_vga test/tb_axi_vga.sv at 3718b9930f94a9eaad8ee50b4bccc71df0403084.
-// The original test is retained in this stage's inputs/official_3718b993.
-module tb_e_vga_unit;
+// The test drives the real axi_vga through its public register and AXI interfaces.
+module tb_vga_buserr;
 `ifndef VGA_ERROR_DEPTH
 `define VGA_ERROR_DEPTH 16
 `endif
@@ -98,23 +98,23 @@ module tb_e_vga_unit;
     checks++;
     if(good!==1'b1)begin
       errors++;
-      $display("[E_VGA_ERROR] profile=%s case=%0d epoch=%0d cycle=%0d time_ps=%0d label=%s actual=%h expected=%h",
+      $display("[VGA_TEST_ERROR] profile=%s case=%0d epoch=%0d cycle=%0d time_ps=%0d label=%s actual=%h expected=%h",
         profile,case_id,epoch,cycle,now_ps(),label,actual,expected);
     end
   endtask
   task automatic control_error(input string label);
-    $display("[E_VGA_CONTROL_ERROR] profile=%s case=%0d epoch=%0d cycle=%0d label=%s",
+    $display("[VGA_TEST_CONTROL_ERROR] profile=%s case=%0d epoch=%0d cycle=%0d label=%s",
       profile,case_id,epoch,cycle,label);
     forever @(negedge clk);
   endtask
   task automatic clocks(input int unsigned n);repeat(n)@(negedge clk);#1ps;endtask
   task automatic reset_common;
     @(negedge clk);#1ps;
-    $display("[E_VGA_RESET] case=%0d epoch=%0d time_ps=%0d asserted=1 external_pending=%0d logical_pending=%0d credit=%0d",
+    $display("[VGA_TEST_RESET] case=%0d epoch=%0d time_ps=%0d asserted=1 external_pending=%0d logical_pending=%0d credit=%0d",
       case_id,epoch,now_ps(),pending.size(),logical_pending,credit_ref);
     rst_n=0;cfg_req='0;be_req='0;
     repeat(5)@(negedge clk);#1ps;rst_n=1;
-    $display("[E_VGA_RESET] case=%0d epoch=%0d time_ps=%0d asserted=0",case_id,epoch,now_ps());
+    $display("[VGA_TEST_RESET] case=%0d epoch=%0d time_ps=%0d asserted=0",case_id,epoch,now_ps());
     clocks(3);
   endtask
   task automatic write_reg(input int unsigned offset,input logic [31:0] value);
@@ -140,7 +140,7 @@ module tb_e_vga_unit;
     values='{positive?32'd6:32'd0,32'd8,32'd16,32'd2,32'd3,32'd3,
       32'd8,32'd1,32'd2,32'd1,start[31:0],{16'd0,start[47:32]},32'd256,32'(burst_len)};
     for(int i=0;i<14;i++)begin write_reg(offsets[i],values[i]);read_reg(offsets[i],values[i]);end
-    $display("[E_VGA_CONFIG] profile=%s case=%0d epoch=%0d time_ps=%0d start=%h bytes=256 divider=8 h=16,2,3,3 v=8,1,2,1 pol=%0d len=%0d",
+    $display("[VGA_TEST_CONFIG] profile=%s case=%0d epoch=%0d time_ps=%0d start=%h bytes=256 divider=8 h=16,2,3,3 v=8,1,2,1 pol=%0d len=%0d",
       profile,case_id,epoch,now_ps(),frame_base,positive,burst_len);
   endtask
   task automatic start_display(input bit positive);
@@ -164,7 +164,7 @@ module tb_e_vga_unit;
         if(idle_seen)quiet++;idle_seen=1;
       end else begin quiet=0;idle_seen=0;end
     end
-    $display("[E_VGA_DRAIN] profile=%s case=%0d epoch=%0d cycle=%0d clocks=%0d quiet=%0d external_pending=%0d logical_pending=%0d credit=%0d",
+    $display("[VGA_TEST_DRAIN] profile=%s case=%0d epoch=%0d cycle=%0d clocks=%0d quiet=%0d external_pending=%0d logical_pending=%0d credit=%0d",
       profile,case_id,epoch,cycle,n,quiet,pending.size(),logical_pending,credit_ref);
     if(quiet!=64)control_error("old_responses_not_drained");
     check({red,green,blue}===16'd0,"disabled_rgb",{red,green,blue},0);
@@ -173,10 +173,10 @@ module tb_e_vga_unit;
   task automatic begin_case(input int unsigned id);
     case_id=id;cases++;pixel_gold=1;black_gold=0;slave_ar_stalls=0;withhold_r=0;r_gap=0;
     reset_common();active=1;
-    $display("[E_VGA_CASE] event=begin profile=%s case=%0d cycle=%0d",profile,case_id,cycle);
+    $display("[VGA_TEST_CASE] event=begin profile=%s case=%0d cycle=%0d",profile,case_id,cycle);
   endtask
   task automatic end_case;
-    $display("[E_VGA_CASE] event=end profile=%s case=%0d cycle=%0d checks=%0d errors=%0d rgb=%0d black=%0d ar=%0d r=%0d",
+    $display("[VGA_TEST_CASE] event=end profile=%s case=%0d cycle=%0d checks=%0d errors=%0d rgb=%0d black=%0d ar=%0d r=%0d",
       profile,case_id,cycle,checks,errors,rgb_total,black_total,ar_total,r_total);
     active=0;
   endtask
@@ -234,7 +234,7 @@ module tb_e_vga_unit;
     begin_case(909);pixel_gold=0;
     capacity_phase=0;capacity_ar_mode=1;capacity_r_budget=0;
     configure(13,0,15,48'h00010010fff0);
-    $display("[E_VGA_CAP_META] version=8 case=909 epoch=13 outstanding=16 stored_errors=4 drop_oldest=0 width=48 id_width=2 user_error_bits=0 base=%h",frame_base);
+    $display("[VGA_TEST_CAP_META] version=8 case=909 epoch=13 outstanding=16 stored_errors=4 drop_oldest=0 width=48 id_width=2 user_error_bits=0 base=%h",frame_base);
     capacity_phase=1;start_display(0);capacity_wait_pending(16);
     capacity_phase=2;clocks(16);
     check(pending.size()==16,"capacity_full_hold",pending.size(),16);
@@ -252,7 +252,7 @@ module tb_e_vga_unit;
     capacity_one_error(7,axi_pkg::RESP_DECERR);
     capacity_phase=8;capacity_response=0;capacity_ar_mode=1;capacity_r_budget=-1;
     stop_and_drain(0);check(be_irq===0,"capacity_final_error_fifo_empty",be_irq,0);
-    $display("[E_VGA_CAP_DONE] case=909 epoch=13 phase=%0d pending=%0d irq=%b simultaneous=%0d ar=%0d r=%0d errors=%0d",
+    $display("[VGA_TEST_CAP_DONE] case=909 epoch=13 phase=%0d pending=%0d irq=%b simultaneous=%0d ar=%0d r=%0d errors=%0d",
       capacity_phase,pending.size(),be_irq,capacity_simultaneous,ar_total,r_total,errors);
     end_case();
   endtask
@@ -300,15 +300,15 @@ module tb_e_vga_unit;
       logical_r=dut.axi_resp.r_valid===1 && dut.axi_req.r_ready===1;
       last_r_accepted=r_accept;
       if(active && profile=="capacity")begin
-        $display("[E_VGA_CAP_STATE] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d queue_before=%0d ar_valid=%b ar_ready=%b ar_id=%h ar_addr=%h ar_len=%h ar_size=%h ar_burst=%h r_valid=%b r_ready=%b r_id=%h r_data=%h r_resp=%h r_last=%b irq=%b",
+        $display("[VGA_TEST_CAP_STATE] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d queue_before=%0d ar_valid=%b ar_ready=%b ar_id=%h ar_addr=%h ar_len=%h ar_size=%h ar_burst=%h r_valid=%b r_ready=%b r_id=%h r_data=%h r_resp=%h r_last=%b irq=%b",
           case_id,epoch,cycle,now_ps(),capacity_phase,pending.size(),req.ar_valid,rsp.ar_ready,req.ar.id,req.ar.addr,req.ar.len,req.ar.size,req.ar.burst,rsp.r_valid,req.r_ready,rsp.r.id,rsp.r.data,rsp.r.resp,rsp.r.last,be_irq);
         if(pending.size()==15 && ar_accept && r_accept)capacity_simultaneous++;
         if(be_req.valid===1 && be_rsp.ready===1)
-          $display("[E_VGA_CAP_MMIO] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d addr=%h write=%b wdata=%h wstrb=%h rdata=%h error=%b",
+          $display("[VGA_TEST_CAP_MMIO] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d addr=%h write=%b wdata=%h wstrb=%h rdata=%h error=%b",
             case_id,epoch,cycle,now_ps(),capacity_phase,be_req.addr,be_req.write,be_req.wdata,be_req.wstrb,be_rsp.rdata,be_rsp.error);
       end
       if(active)begin
-        $display("[E_VGA_AXI_UNUSED] case=%0d epoch=%0d cycle=%0d time_ps=%0d aw_valid=%b aw_ready=%b aw_id=%h aw_addr=%h aw_len=%h aw_size=%h w_valid=%b w_ready=%b w_data=%h w_strb=%h w_last=%b b_valid=%b b_ready=%b b_id=%h b_resp=%h",
+        $display("[VGA_TEST_AXI_UNUSED] case=%0d epoch=%0d cycle=%0d time_ps=%0d aw_valid=%b aw_ready=%b aw_id=%h aw_addr=%h aw_len=%h aw_size=%h w_valid=%b w_ready=%b w_data=%h w_strb=%h w_last=%b b_valid=%b b_ready=%b b_id=%h b_resp=%h",
           case_id,epoch,cycle,now_ps(),req.aw_valid,rsp.aw_ready,req.aw.id,req.aw.addr,req.aw.len,req.aw.size,req.w_valid,rsp.w_ready,req.w.data,req.w.strb,req.w.last,rsp.b_valid,req.b_ready,rsp.b.id,rsp.b.resp);
         check(!$isunknown({req.aw_valid,req.w_valid,req.ar_valid,req.r_ready,rsp.r_valid,rsp.ar_ready}),"axi_control_known");
         check(req.aw_valid===0 && req.w_valid===0,"read_only_master",{req.aw_valid,req.w_valid},0);
@@ -318,12 +318,12 @@ module tb_e_vga_unit;
       ar_held=req.ar_valid===1 && rsp.ar_ready!==1;held_ar=req.ar;
       r_held=rsp.r_valid===1 && req.r_ready!==1;held_r=rsp.r;
       if(active && (req.ar_valid!==0 || ar_held))begin
-        $display("[E_VGA_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=external channel=AR valid=%b ready=%b id=%h addr=%h len=%h size=%h burst=%h cache=%h lock=%b prot=%h qos=%h region=%h user=%h",
+        $display("[VGA_TEST_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=external channel=AR valid=%b ready=%b id=%h addr=%h len=%h size=%h burst=%h cache=%h lock=%b prot=%h qos=%h region=%h user=%h",
           case_id,epoch,cycle,now_ps(),req.ar_valid,rsp.ar_ready,req.ar.id,req.ar.addr,req.ar.len,req.ar.size,req.ar.burst,req.ar.cache,req.ar.lock,req.ar.prot,req.ar.qos,req.ar.region,req.ar.user);
         if(req.ar_valid && !rsp.ar_ready)ar_stall_total++;
       end
       if(active && (rsp.r_valid!==0 || r_held))
-        $display("[E_VGA_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=external channel=R valid=%b ready=%b id=%h data=%h resp=%h last=%b user=%h",
+        $display("[VGA_TEST_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=external channel=R valid=%b ready=%b id=%h data=%h resp=%h last=%b user=%h",
           case_id,epoch,cycle,now_ps(),rsp.r_valid,req.r_ready,rsp.r.id,rsp.r.data,rsp.r.resp,rsp.r.last,rsp.r.user);
       if(ar_accept)begin
         if(active)begin
@@ -346,17 +346,17 @@ module tb_e_vga_unit;
       end
       if(logical_ar)begin
         logical_pending+=int'(dut.axi_req.ar.len)+1;
-        if(active)$display("[E_VGA_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=fetcher channel=AR valid=1 ready=1 id=%h addr=%h len=%h size=%h burst=%h cache=%h",
+        if(active)$display("[VGA_TEST_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=fetcher channel=AR valid=1 ready=1 id=%h addr=%h len=%h size=%h burst=%h cache=%h",
           case_id,epoch,cycle,now_ps(),dut.axi_req.ar.id,dut.axi_req.ar.addr,dut.axi_req.ar.len,dut.axi_req.ar.size,dut.axi_req.ar.burst,dut.axi_req.ar.cache);
       end
       if(logical_r)logical_pending--;
       if(active && dut.axi_resp.r_valid===1)begin
-        $display("[E_VGA_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=fetcher channel=R valid=%b ready=%b id=%h data=%h resp=%h last=%b user=%h",
+        $display("[VGA_TEST_AXI] case=%0d epoch=%0d cycle=%0d time_ps=%0d side=fetcher channel=R valid=%b ready=%b id=%h data=%h resp=%h last=%b user=%h",
           case_id,epoch,cycle,now_ps(),dut.axi_resp.r_valid,dut.axi_req.r_ready,dut.axi_resp.r.id,dut.axi_resp.r.data,dut.axi_resp.r.resp,dut.axi_resp.r.last,dut.axi_resp.r.user);
         if(!dut.axi_req.r_ready)inner_stall_total++;
       end
       if(active && (fifo_pop || ar_accept || credit_ref==16 || rsp.r_valid!==1'b0 || dut.axi_resp.r_valid!==1'b0))
-        $display("[E_VGA_CREDIT] case=%0d epoch=%0d cycle=%0d time_ps=%0d ar_accept=%b fifo_valid=%b fifo_ready=%b fifo_last=%b reference_before=%0d dut_actual=%0d split_ar_valid=%b external_ar_valid=%b external_rvalid=%b external_rready=%b logical_rvalid=%b logical_rready=%b",
+        $display("[VGA_TEST_CREDIT] case=%0d epoch=%0d cycle=%0d time_ps=%0d ar_accept=%b fifo_valid=%b fifo_ready=%b fifo_last=%b reference_before=%0d dut_actual=%0d split_ar_valid=%b external_ar_valid=%b external_rvalid=%b external_rready=%b logical_rvalid=%b logical_rready=%b",
           case_id,epoch,cycle,now_ps(),ar_accept,dut.axi_resp_split.r_valid,dut.axi_req_split.r_ready,dut.axi_resp_split.r.last,credit_ref,dut.counter_q,dut.axi_req_split.ar_valid,req.ar_valid,rsp.r_valid,req.r_ready,dut.axi_resp.r_valid,dut.axi_req.r_ready);
       if(credit_ref==16 && !fifo_pop && dut.axi_req_split.ar_valid===1 && req.ar_valid===0 && rsp.ar_ready===1)credit_full_total++;
       credit_ref+=int'(ar_accept)-int'(fifo_pop);
@@ -365,7 +365,7 @@ module tb_e_vga_unit;
       effective_div=(divider_shadow&255)==0?1:int'(divider_shadow&255);
       tick=control_shadow[0] && ref_phase==0;
       if(active)begin
-        $display("[E_VGA_PIN] case=%0d epoch=%0d cycle=%0d time_ps=%0d sample=pre hsync=%b vsync=%b red=%h green=%h blue=%h",
+        $display("[VGA_TEST_PIN] case=%0d epoch=%0d cycle=%0d time_ps=%0d sample=pre hsync=%b vsync=%b red=%h green=%h blue=%h",
           case_id,epoch,cycle,now_ps(),hs,vs,red,green,blue);
         check(hs===(control_shadow[1]?(raster_running && hpos>=18 && hpos<21):!(raster_running && hpos>=18 && hpos<21)),"hsync_pre",hs,0);
         check(vs===(control_shadow[2]?(raster_running && vpos>=9 && vpos<11):!(raster_running && vpos>=9 && vpos<11)),"vsync_pre",vs,0);
@@ -388,7 +388,7 @@ module tb_e_vga_unit;
       ref_phase=ref_phase<effective_div-1?ref_phase+1:0;
       if(cfg_req.valid===1 && cfg_rsp.ready===1)begin
         mmio_total++;
-        $display("[E_VGA_MMIO] case=%0d epoch=%0d cycle=%0d time_ps=%0d addr=%h write=%b wdata=%h wstrb=%h rdata=%h error=%b",
+        $display("[VGA_TEST_MMIO] case=%0d epoch=%0d cycle=%0d time_ps=%0d addr=%h write=%b wdata=%h wstrb=%h rdata=%h error=%b",
           case_id,epoch,cycle,now_ps(),cfg_req.addr,cfg_req.write,cfg_req.wdata,cfg_req.wstrb,cfg_rsp.rdata,cfg_rsp.error);
         if(cfg_req.write && !cfg_rsp.error)case(cfg_req.addr[5:0])
           0:control_shadow=cfg_req.wdata&7;
@@ -398,14 +398,14 @@ module tb_e_vga_unit;
       end
       #1ps;
       if(active && profile=="capacity")
-        $display("[E_VGA_CAP_POST] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d queue_after=%0d irq=%b",
+        $display("[VGA_TEST_CAP_POST] case=%0d epoch=%0d cycle=%0d time_ps=%0d phase=%0d queue_after=%0d irq=%b",
           case_id,epoch,cycle,now_ps(),capacity_phase,pending.size(),be_irq);
-      if(active)$display("[E_VGA_PIN] case=%0d epoch=%0d cycle=%0d time_ps=%0d sample=post hsync=%b vsync=%b red=%h green=%h blue=%h",
+      if(active)$display("[VGA_TEST_PIN] case=%0d epoch=%0d cycle=%0d time_ps=%0d sample=post hsync=%b vsync=%b red=%h green=%h blue=%h",
         case_id,epoch,cycle,now_ps(),hs,vs,red,green,blue);
     end
   end
   always @(hs or vs or red or green or blue)if(active && rst_n)
-    $display("[E_VGA_PIN_CHANGE] case=%0d epoch=%0d time_ps=%0d hsync=%b vsync=%b red=%h green=%h blue=%h",
+    $display("[VGA_TEST_PIN_CHANGE] case=%0d epoch=%0d time_ps=%0d hsync=%b vsync=%b red=%h green=%h blue=%h",
       case_id,epoch,now_ps(),hs,vs,red,green,blue);
 
   task automatic timing_profile;
@@ -422,7 +422,7 @@ module tb_e_vga_unit;
     if(credit_full_total==before_full || inner_stall_total==before_inner)control_error("credit_full_window_not_reached");end_case();
     begin_case(905);configure(5,0,7,48'h0010fff0);withhold_r=1;pixel_gold=0;black_gold=1;
     start_display(0);wait_frames(2);black_gold=0;withhold_r=0;wait_frames(4);
-    $display("[E_VGA_LIMITATION] case=905 underflow_seamless_recovery=not_accepted action=common_reset");
+    $display("[VGA_TEST_LIMITATION] case=905 underflow_seamless_recovery=not_accepted action=common_reset");
     reset_common();pixel_gold=1;configure(6,0,7,48'h0010fff0);start_display(0);wait_frames(4);stop_and_drain(0);end_case();
   endtask
   task automatic restart_profile;
@@ -445,17 +445,17 @@ module tb_e_vga_unit;
     reset_common();withhold_r=0;pixel_gold=1;configure(12,0,7,48'h0010fff0);start_display(0);wait_frames(4);stop_and_drain(0);end_case();
   endtask
   initial begin
-    void'($value$plusargs("E_VGA_UNIT_PROFILE=%s",profile));
-    $display("[E_VGA_INSTANCE] error_depth=%0d vga_buffer=%0d splitter_max=%0d",buserr.NumOutstanding,dut.BufferDepth,dut.MaxReadTxns);
-    $display("[E_VGA_META] version=1 kind=unit profile=%s clock_ps=5000 width=16 height=8 bytes=256 divider=8",profile);
+    void'($value$plusargs("VGA_TEST_UNIT_PROFILE=%s",profile));
+    $display("[VGA_TEST_INSTANCE] error_depth=%0d vga_buffer=%0d splitter_max=%0d",buserr.NumOutstanding,dut.BufferDepth,dut.MaxReadTxns);
+    $display("[VGA_TEST_META] version=1 kind=unit profile=%s clock_ps=5000 width=16 height=8 bytes=256 divider=8",profile);
     case(profile)"timing":timing_profile();"flow":flow_profile();"restart":restart_profile();"capacity":capacity_profile();default:control_error("unsupported_profile");endcase
     check(cases==(profile=="capacity"?1:profile=="timing"?2:3),"case_count",cases,profile=="capacity"?1:profile=="timing"?2:3);
     check(rgb_total==(profile=="capacity"?0:profile=="timing"?512:768),"formal_rgb_count",rgb_total,profile=="capacity"?0:profile=="timing"?512:768);
     check(black_total==(profile=="flow"?256:0),"formal_black_count",black_total,profile=="flow"?256:0);
     check(pending.size()==0 && logical_pending==0 && credit_ref==0,"final_pending_zero");
-    $display("[E_VGA_DONE] kind=unit profile=%s cases=%0d checks=%0d errors=%0d formal_rgb=%0d formal_black=%0d ar=%0d r=%0d mmio=%0d ar_stall=%0d inner_stall=%0d credit_full=%0d",
+    $display("[VGA_TEST_DONE] kind=unit profile=%s cases=%0d checks=%0d errors=%0d formal_rgb=%0d formal_black=%0d ar=%0d r=%0d mmio=%0d ar_stall=%0d inner_stall=%0d credit_full=%0d",
       profile,cases,checks,errors,rgb_total,black_total,ar_total,r_total,mmio_total,ar_stall_total,inner_stall_total,credit_full_total);
-    if(errors!=0)$fatal(1,"E_VGA_UNIT_FAIL");
-    $display("E_VGA_UNIT_PASS profile=%s",profile);$finish;
+    if(errors!=0)$fatal(1,"VGA_TEST_UNIT_FAIL");
+    $display("VGA_TEST_UNIT_PASS profile=%s",profile);$finish;
   end
 endmodule

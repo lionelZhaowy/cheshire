@@ -1,10 +1,10 @@
 // Copyright 2026 CheshireAra contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-// Give DC the finite RGB565/48-bit-address/64-bit-data fetcher type parameters.
+// Instantiate the AXI error monitor with fixed 48-bit-address/64-bit-data types.
 // The DUT interface and state are unchanged by this implementation-only wrapper.
 `include "axi/typedef.svh"
-package e_vga_fetcher_impl_pkg;
+package vga_capacity_impl_pkg;
   typedef logic [47:0] addr_t;
   typedef logic [1:0] id_t;
   typedef logic [63:0] data_t;
@@ -15,7 +15,7 @@ package e_vga_fetcher_impl_pkg;
   typedef struct packed {logic ready,error;logic[31:0] rdata;} reg_rsp_t;
 endpackage
 
-module vga_capacity_impl import e_vga_fetcher_impl_pkg::*; #(
+module vga_capacity_impl import vga_capacity_impl_pkg::*; #(
   parameter int unsigned Depth = 16
 )(input logic clk_i,rst_ni,testmode_i,input vga_req_t axi_req_i,
   input vga_resp_t axi_rsp_i,output logic[1:0] err_irq_o,
